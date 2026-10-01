@@ -287,7 +287,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
 	  counter--;
 	  if (counter <= 0) {
-	      counter = 25;
+	      counter = 50;
 	      static GPIO_PinState dot_state = GPIO_PIN_RESET;
 	      static GPIO_PinState led_state = GPIO_PIN_RESET;
 	      static int blink_count = 0;
