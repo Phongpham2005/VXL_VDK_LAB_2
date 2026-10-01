@@ -46,12 +46,19 @@ TIM_HandleTypeDef htim2;
 const int MAX_LED = 4;
 int index_led = 0;
 int led_buffer[4] = {1, 2, 3, 0};
+
 int hour = 15;
 int minute = 58;
 int second = 50;
+
 int timer0_counter = 0;
 int timer0_flag = 0;
+
 int TIMER_CYCLE = 10;
+
+int timer1_counter = 0;
+int timer1_flag = 0;
+
 const uint8_t LED7SEG_CODES[10] = {
     0xC0, // 0: 1100 0000
     0xF9, // 1: 1111 1001
@@ -128,10 +135,19 @@ void setTimer0(int duration) {
     timer0_flag = 0;
 }
 
+void setTimer1(int duration) {
+    timer1_counter = duration / TIMER_CYCLE;
+    timer1_flag = 0;
+}
+
 void timer_run() {
     if (timer0_counter > 0) {
         timer0_counter--;
         if (timer0_counter == 0) timer0_flag = 1;
+    }
+    if (timer1_counter > 0) {
+        timer1_counter--;
+        if (timer1_counter == 0) timer1_flag = 1;
     }
 }
 /* USER CODE END 0 */
@@ -168,31 +184,49 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT (& htim2 );
   setTimer0(100);
+  setTimer1(250);
+  GPIO_PinState dot_state = GPIO_PIN_RESET;
   GPIO_PinState led_state = GPIO_PIN_RESET;
+  int blink_count = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
-  {
-	  if (timer0_flag == 1) {
-	        setTimer0(100);
-	        second++;
-	        if (second >= 60) {
-	          second = 0;
-	          minute++;
-	        }
-	        if (minute >= 60) {
-	          minute = 0;
-	          hour++;
-	        }
-	        if (hour >= 24) {
-	          hour = 0;
-	        }
-	        updateClockBuffer();
-	        led_state = (led_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-	        HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, led_state);
-	  }
+    {
+      if (timer0_flag == 1) {
+        setTimer0(100);
+
+        second++;
+        if (second >= 60) {
+          second = 0;
+          minute++;
+        }
+        if (minute >= 60) {
+          minute = 0;
+          hour++;
+        }
+        if (hour >= 24) {
+          hour = 0;
+        }
+
+        updateClockBuffer();
+
+        led_state = (led_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+        HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, led_state);
+      }
+
+      if (timer1_flag == 1) {
+        setTimer1(250);
+
+        update7SEG(index_led++);
+        index_led = index_led % MAX_LED;
+        blink_count++;
+        if (blink_count % 4 == 0) {
+        	dot_state = (dot_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+            HAL_GPIO_WritePin(DOT_GPIO_Port, DOT_Pin, dot_state);
+        }
+      }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -322,25 +356,11 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-int counter = 25;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM2)
   {
 	  timer_run();
-	  counter--;
-	  if (counter <= 0) {
-	      counter = 25;
-	      static GPIO_PinState dot_state = GPIO_PIN_RESET;
-	      static int blink_count = 0;
-	      update7SEG(index_led++);
-	      index_led = index_led % MAX_LED;
-          blink_count++;
-          if (blink_count % 4 == 0) {
-        	  dot_state = (dot_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-              HAL_GPIO_WritePin(DOT_GPIO_Port, DOT_Pin, dot_state);
-          }
-    }
   }
 }
 
