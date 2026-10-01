@@ -43,6 +43,10 @@
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
+const int MAX_LED = 4;
+int index_led = 0;
+int led_buffer[4] = {1, 2, 3, 0};
+
 const uint8_t LED7SEG_CODES[10] = {
     0xC0, // 0: 1100 0000
     0xF9, // 1: 1111 1001
@@ -78,6 +82,35 @@ void display7SEG(int num)
     GPIO_PinState state = ((code >> i) & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET;
     HAL_GPIO_WritePin(GPIOB, (uint16_t)(1 << i), state);
   }
+}
+
+void update7SEG(int index) {
+	index = index % MAX_LED;
+    HAL_GPIO_WritePin(GPIOA, EN0_Pin | EN1_Pin | EN2_Pin | EN3_Pin, GPIO_PIN_SET);
+    switch (index) {
+        case 0:
+            // Display the first 7SEG with led_buffer[0]
+            display7SEG(led_buffer[0]);
+            HAL_GPIO_WritePin(EN0_GPIO_Port, EN0_Pin, GPIO_PIN_RESET);
+            break;
+        case 1:
+            // Display the second 7SEG with led_buffer[1]
+            display7SEG(led_buffer[1]);
+            HAL_GPIO_WritePin(EN1_GPIO_Port, EN1_Pin, GPIO_PIN_RESET);
+            break;
+        case 2:
+            // Display the third 7SEG with led_buffer[2]
+            display7SEG(led_buffer[2]);
+            HAL_GPIO_WritePin(EN2_GPIO_Port, EN2_Pin, GPIO_PIN_RESET);
+            break;
+        case 3:
+            // Display the fourth 7SEG with led_buffer[3]
+            display7SEG(led_buffer[3]);
+            HAL_GPIO_WritePin(EN3_GPIO_Port, EN3_Pin, GPIO_PIN_RESET);
+            break;
+        default:
+            break;
+    }
 }
 /* USER CODE END 0 */
 
@@ -252,46 +285,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM2)
   {
-    counter--;
-    if (counter <= 0)
-    {
-      counter = 50;
+	  counter--;
+	  if (counter <= 0) {
+	      counter = 25;
+	      static GPIO_PinState dot_state = GPIO_PIN_RESET;
+	      static GPIO_PinState led_state = GPIO_PIN_RESET;
+	      static int blink_count = 0;
+	      update7SEG(index_led++);
+	      index_led = index_led % MAX_LED;
+          blink_count++;
+          if (blink_count % 2 == 0) {
+        	  dot_state = (dot_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+              HAL_GPIO_WritePin(DOT_GPIO_Port, DOT_Pin, dot_state);
+          }
 
-      static int EN = 0;
-      static int blink_count = 0;
-
-      static GPIO_PinState dot_state = GPIO_PIN_RESET;
-      static GPIO_PinState led_state = GPIO_PIN_RESET;
-
-      HAL_GPIO_WritePin(GPIOA, EN0_Pin | EN1_Pin | EN2_Pin | EN3_Pin, GPIO_PIN_SET);
-
-      int num;
-      switch (EN) {
-        case 0: num = 1; break;
-        case 1: num = 2; break;
-        case 2: num = 3; break;
-        case 3: num = 0; break;
-      }
-      display7SEG(num);
-
-      switch (EN) {
-        case 0: HAL_GPIO_WritePin(EN0_GPIO_Port, EN0_Pin, GPIO_PIN_RESET); break;
-        case 1: HAL_GPIO_WritePin(EN1_GPIO_Port, EN1_Pin, GPIO_PIN_RESET); break;
-        case 2: HAL_GPIO_WritePin(EN2_GPIO_Port, EN2_Pin, GPIO_PIN_RESET); break;
-        case 3: HAL_GPIO_WritePin(EN3_GPIO_Port, EN3_Pin, GPIO_PIN_RESET); break;
-      }
-
-      EN += 1;
-      if (EN > 3) EN = 0;
-
-      blink_count++;
-      if (blink_count % 2 == 0) {
-        dot_state = (dot_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-        HAL_GPIO_WritePin(DOT_GPIO_Port, DOT_Pin, dot_state);
-      }
-
-      led_state = (led_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-      HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, led_state);
+          led_state = (led_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+          HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, led_state);
     }
   }
 }
