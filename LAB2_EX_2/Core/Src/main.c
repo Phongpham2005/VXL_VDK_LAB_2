@@ -280,7 +280,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-int counter = 50;
+int counter = 25;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM2)
@@ -294,7 +294,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	      update7SEG(index_led++);
 	      index_led = index_led % MAX_LED;
           blink_count++;
-          if (blink_count % 2 == 0) {
+          if (blink_count % 4 == 0) {
         	  dot_state = (dot_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
               HAL_GPIO_WritePin(DOT_GPIO_Port, DOT_Pin, dot_state);
           }
