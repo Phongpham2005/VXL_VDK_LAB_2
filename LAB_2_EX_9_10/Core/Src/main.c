@@ -46,11 +46,17 @@ TIM_HandleTypeDef htim2;
 const int MAX_LED_MATRIX = 8;
 int index_led_matrix = 0;
 
-uint8_t matrix_buffer[8] = {0xFC, 0xFE, 0x13, 0x11, 0x11, 0x13, 0xFE, 0xFC};
+uint8_t matrix_buffer[8] = {0};
+
+const uint8_t letterA[8] = {0xFC, 0xFE, 0x13, 0x11, 0x11, 0x13, 0xFE, 0xFC};
+
+int shift_index = 0;
 
 int timer1_counter = 0;
 int timer1_flag = 0;
 
+int timer2_counter = 0;
+int timer2_flag = 0;
 uint16_t enm_pins[8] = {ENM0_Pin, ENM1_Pin, ENM2_Pin, ENM3_Pin, ENM4_Pin, ENM5_Pin, ENM6_Pin, ENM7_Pin};
 uint16_t row_pins[8] = {ROW0_Pin, ROW1_Pin, ROW2_Pin, ROW3_Pin, ROW4_Pin, ROW5_Pin, ROW6_Pin, ROW7_Pin};
 /* USER CODE END PV */
@@ -78,16 +84,37 @@ void updateLEDMatrix(int index) {
     HAL_GPIO_WritePin(GPIOA, enm_pins[index], GPIO_PIN_RESET);
 }
 
+void shiftRightFromLeft(int step) {
+    for (int i = 0; i < 8; i++) {
+        int src_idx = i - step + 7;
+
+        if (src_idx >= 0 && src_idx < 8) {
+            matrix_buffer[i] = letterA[src_idx];
+        } else {
+            matrix_buffer[i] = 0x00;
+        }
+    }
+}
+
 void setTimer1(int duration) {
-  timer1_counter = duration / TIMER_CYCLE;
-  timer1_flag = 0;
+    timer1_counter = duration / TIMER_CYCLE;
+    timer1_flag = 0;
+}
+
+void setTimer2(int duration) {
+    timer2_counter = duration / TIMER_CYCLE;
+    timer2_flag = 0;
 }
 
 void timer_run() {
-  if (timer1_counter > 0) {
-    timer1_counter--;
-    if (timer1_counter == 0) timer1_flag = 1;
-  }
+    if (timer1_counter > 0) {
+        timer1_counter--;
+        if (timer1_counter == 0) timer1_flag = 1;
+    }
+    if (timer2_counter > 0) {
+        timer2_counter--;
+        if (timer2_counter == 0) timer2_flag = 1;
+    }
 }
 /* USER CODE END 0 */
 
@@ -123,17 +150,28 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
   setTimer1(10);
+  setTimer2(300);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
-  {
-      if (timer1_flag == 1) {
-          setTimer1(10);
-          updateLEDMatrix(index_led_matrix);
-          index_led_matrix = (index_led_matrix + 1) % MAX_LED_MATRIX;
-      }
+    {
+        if (timer1_flag == 1) {
+            setTimer1(10);
+            updateLEDMatrix(index_led_matrix);
+            index_led_matrix = (index_led_matrix + 1) % MAX_LED_MATRIX;
+        }
+
+        if (timer2_flag == 1) {
+            setTimer2(300);
+            shiftRightFromLeft(shift_index);
+
+            shift_index++;
+                      if (shift_index >= 16) {
+                          shift_index = 0;
+                      }
+        }
       /* USER CODE END WHILE */
 
       /* USER CODE BEGIN 3 */
