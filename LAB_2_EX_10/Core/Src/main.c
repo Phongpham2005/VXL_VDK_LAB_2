@@ -52,11 +52,10 @@ const uint8_t letterA[8] = {0xFC, 0xFE, 0x13, 0x11, 0x11, 0x13, 0xFE, 0xFC};
 
 int shift_index = 0;
 
-int timer1_counter = 0;
-int timer1_flag = 0;
+#define NUM_TIMERS 4
 
-int timer2_counter = 0;
-int timer2_flag = 0;
+int timer_counters[NUM_TIMERS] = {0};
+int timer_flags[NUM_TIMERS]    = {0};
 
 uint16_t enm_pins[8] = {ENM0_Pin, ENM1_Pin, ENM2_Pin, ENM3_Pin, ENM4_Pin, ENM5_Pin, ENM6_Pin, ENM7_Pin};
 uint16_t row_pins[8] = {ROW0_Pin, ROW1_Pin, ROW2_Pin, ROW3_Pin, ROW4_Pin, ROW5_Pin, ROW6_Pin, ROW7_Pin};
@@ -97,24 +96,28 @@ void shiftRightFromLeft(int step) {
     }
 }
 
-void setTimer1(int duration) {
-    timer1_counter = duration / TIMER_CYCLE;
-    timer1_flag = 0;
-}
-
-void setTimer2(int duration) {
-    timer2_counter = duration / TIMER_CYCLE;
-    timer2_flag = 0;
-}
-
-void timer_run() {
-    if (timer1_counter > 0) {
-        timer1_counter--;
-        if (timer1_counter == 0) timer1_flag = 1;
+void setTimer(int index, int duration) {
+    if (index >= 0 && index < NUM_TIMERS) {
+        timer_counters[index] = duration / TIMER_CYCLE;
+        timer_flags[index]    = 0;
     }
-    if (timer2_counter > 0) {
-        timer2_counter--;
-        if (timer2_counter == 0) timer2_flag = 1;
+}
+
+int timer_flag(int index) {
+    if (index >= 0 && index < NUM_TIMERS) {
+        return timer_flags[index];
+    }
+    return 0;
+}
+
+void timer_run(void) {
+    for (int i = 0; i < NUM_TIMERS; i++) {
+        if (timer_counters[i] > 0) {
+            timer_counters[i]--;
+            if (timer_counters[i] == 0) {
+                timer_flags[i] = 1;
+            }
+        }
     }
 }
 /* USER CODE END 0 */
@@ -150,8 +153,12 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT (& htim2 ) ;
-  setTimer1(10);
-  setTimer2(300);
+  HAL_GPIO_WritePin(GPIOA, EN0_Pin | EN1_Pin | EN2_Pin | EN3_Pin | DOT_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, a_Pin | b_Pin | c_Pin | d_Pin | e_Pin | f_Pin | g_Pin, GPIO_PIN_RESET);
+  setTimer(1, 10);
+  setTimer(2, 300);
+  setTimer(3, 500);
+  GPIO_PinState led_state = GPIO_PIN_RESET;
   for (int i = 0; i < 8; i++) {
       matrix_buffer[i] = 0;
     }
@@ -161,20 +168,26 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
     {
-        if (timer1_flag == 1) {
-            setTimer1(10);
+        if (timer_flag(1) == 1) {
+            setTimer(1, 10);
             updateLEDMatrix(index_led_matrix);
             index_led_matrix = (index_led_matrix + 1) % MAX_LED_MATRIX;
         }
 
-        if (timer2_flag == 1) {
-            setTimer2(300);
+        if (timer_flag(2) == 1) {
+            setTimer(2, 300);
             shiftRightFromLeft(shift_index);
 
             shift_index++;
             if (shift_index >= 16) {
                 shift_index = 0;
             }
+        }
+
+        if (timer_flag(3) == 1) {
+        	setTimer(3, 500);
+        	led_state = (led_state == GPIO_PIN_RESET) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+        	HAL_GPIO_WritePin (GPIOA, LED_RED_Pin, led_state);
         }
       /* USER CODE END WHILE */
 
